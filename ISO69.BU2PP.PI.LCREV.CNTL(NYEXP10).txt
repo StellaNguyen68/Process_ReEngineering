@@ -1,0 +1,63 @@
+//I60472Y JOB (0962,69,T,I,00962-1903-R15051-XX),
+//  'NYEXP10',CLASS=E,
+// MSGCLASS=H,MSGLEVEL=(2,0),NOTIFY=&SYSUID,REGION=6M
+//*
+//*  READS IN COMPILATION DATA FROM PHASE 2 AND PULLS OFF
+//*    THE 10 YEAR EXPOSURES BY TIER FOR NY
+//*
+//*
+//*        */
+/*RESOURCE SAS,UP
+//JP EXEC SAS,REGION=512K,OPTIONS='MACRO'
+//WORK     DD UNIT=SYSDA,SPACE=(CYL,(50,20),RLSE)
+//SASLIST  DD SYSOUT=Q
+//IN       DD DSN=ISO69.PP.PL.MERGE.PHASE2.C2019.FORA1100,DISP=SHR
+//SYSIN    DD *
+
+
+  /* Input phase 2 data.                                             */
+   data in (KEEP = CLASS STATE TERRGP STEHY CWEHY);
+      infile IN;
+      input  @1 repyr      4.     @6 class      3.
+            @10 state      2.    @13 terrgp     2.
+            @16 stehy    pd7.2   @24 stlccl   pd7.2
+            @32 cwehy    pd7.2   @40 cwlccl   pd7.2
+            @48 stloss   pd7.    @56 stalae   pd7.
+            @64 stclaim  pd3.    @68 cwloss   pd7.
+            @76 cwalae   pd7.    @84 cwclaim  pd3.  ;
+      if stehy   = . then stehy   = 0;
+
+
+
+   IF REPYR GE 2010 AND REPYR LE 2019;  /* TO GET 10 YEAR EXPOS */
+   IF STATE = 31;
+
+   STEHY = ROUND(STEHY,1);
+   CWEHY = ROUND(CWEHY,1);
+
+   PROC SORT DATA=IN;
+      BY STATE TERRGP CLASS;
+
+   PROC SUMMARY DATA=IN;
+      BY STATE TERRGP CLASS;
+      VAR STEHY CWEHY;
+      OUTPUT OUT=TOTSW (Drop=_Type_ _Freq_) SUM=;
+
+   PROC PRINT NOOBS DATA=TOTSW;
+      BY STATE TERRGP;
+      VAR CLASS STEHY CWEHY;
+   TITLE 'C2019 - NY AND CW 10 YEAR EARNED EXPOSURES BY TIER';
+
+
+   PROC SORT DATA=TOTSW;
+      BY STATE CLASS;
+
+   PROC SUMMARY DATA=TOTSW;
+      BY STATE CLASS;
+      VAR STEHY CWEHY;
+      OUTPUT OUT=TOT (Drop=_Type_ _Freq_) SUM=;
+
+   PROC PRINT NOOBS DATA=TOT;
+      BY STATE;
+      VAR CLASS STEHY CWEHY;
+   TITLE 'C2019 - NY AND CW 10 YEAR STATEWIDE EARNED EXPOSURES';
